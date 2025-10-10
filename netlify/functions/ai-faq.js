@@ -15,7 +15,7 @@ export async function handler(event, context) {
       "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`
     },
     body: JSON.stringify({
-      model: "google/gemma-2-9b-it",
+      model: "Gemma 2 9b",
       messages: [
         { role: "system", content: "You are a helpful assistant for this website. Answer questions concisely." },
         { role: "user", content: question }
