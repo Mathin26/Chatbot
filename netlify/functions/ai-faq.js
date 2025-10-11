@@ -1,7 +1,6 @@
 const fetch = require('node-fetch');
 
 exports.handler = async (event, context) => {
-  // CORS headers
   const headers = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Content-Type',
@@ -9,12 +8,10 @@ exports.handler = async (event, context) => {
     'Content-Type': 'application/json'
   };
 
-  // Handle OPTIONS preflight
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 200, headers, body: '' };
   }
 
-  // Only POST allowed
   if (event.httpMethod !== 'POST') {
     return {
       statusCode: 405,
@@ -26,7 +23,6 @@ exports.handler = async (event, context) => {
   try {
     console.log('Function invoked');
     
-    // Parse request
     const body = JSON.parse(event.body);
     const userMessage = body.question || body.user;
 
@@ -40,10 +36,15 @@ exports.handler = async (event, context) => {
       };
     }
 
-    // Check API key
     const apiKey = process.env.OPENROUTER_API_KEY;
-    if (!apiKey) {
-      console.error('OPENROUTER_API_KEY not set');
+    
+    // DEBUG: Log key info (first/last 5 chars only for security)
+    if (apiKey) {
+      console.log('API Key exists, length:', apiKey.length);
+      console.log('API Key prefix:', apiKey.substring(0, 5));
+      console.log('API Key suffix:', apiKey.substring(apiKey.length - 5));
+    } else {
+      console.error('OPENROUTER_API_KEY is undefined or empty');
       return {
         statusCode: 500,
         headers,
@@ -53,7 +54,16 @@ exports.handler = async (event, context) => {
 
     console.log('Calling OpenRouter API...');
 
-    // Call OpenRouter
+    const requestBody = {
+      model: 'google/gemma-2-9b-it:free',
+      messages: [
+        { role: 'system', content: 'You are a helpful assistant.' },
+        { role: 'user', content: userMessage }
+      ]
+    };
+
+    console.log('Request body:', JSON.stringify(requestBody));
+
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -62,14 +72,7 @@ exports.handler = async (event, context) => {
         'HTTP-Referer': 'https://chat.leblesy.com',
         'X-Title': 'Chatbot'
       },
-      body: JSON.stringify({
-        model: 'google/gemma-2-9b-it:free',
-        messages: [
-          { role: 'system', content: 'You are a helpful assistant.' },
-          { role: 'user', content: userMessage }
-        ]
-      }),
-      timeout: 9000  // 9 second timeout (before Netlify's 10s limit)
+      body: JSON.stringify(requestBody)
     });
 
     console.log('OpenRouter status:', response.status);
@@ -77,10 +80,14 @@ exports.handler = async (event, context) => {
     if (!response.ok) {
       const errorText = await response.text();
       console.error('OpenRouter error:', errorText);
+      
+      // Also log response headers
+      console.error('Response headers:', JSON.stringify([...response.headers.entries()]));
+      
       return {
         statusCode: response.status,
         headers,
-        body: JSON.stringify({ answer: `API Error: ${response.status}` })
+        body: JSON.stringify({ answer: `API Error: ${response.status} - ${errorText}` })
       };
     }
 
