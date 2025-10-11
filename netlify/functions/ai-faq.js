@@ -55,7 +55,7 @@ exports.handler = async (event, context) => {
     console.log('Calling OpenRouter API...');
 
     const requestBody = {
-      model: 'google/gemma-2-9b-it:free',
+      model: 'meituan/longcat-flash-chat:free',
       messages: [
         { role: 'system', content: 'You are a helpful assistant.' },
         { role: 'user', content: userMessage }
