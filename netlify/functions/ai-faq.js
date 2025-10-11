@@ -1,7 +1,7 @@
-import fetch from 'node-fetch';
+const fetch = require('node-fetch');
 
-export const handler = async (event, context) => {
-  // Add CORS headers
+exports.handler = async (event, context) => {
+  // CORS headers
   const headers = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Content-Type',
@@ -9,16 +9,12 @@ export const handler = async (event, context) => {
     'Content-Type': 'application/json'
   };
 
-  // Handle preflight OPTIONS request
+  // Handle OPTIONS preflight
   if (event.httpMethod === 'OPTIONS') {
-    return {
-      statusCode: 200,
-      headers,
-      body: ''
-    };
+    return { statusCode: 200, headers, body: '' };
   }
 
-  // Only accept POST
+  // Only POST allowed
   if (event.httpMethod !== 'POST') {
     return {
       statusCode: 405,
@@ -28,11 +24,13 @@ export const handler = async (event, context) => {
   }
 
   try {
-    // Parse input
+    console.log('Function invoked');
+    
+    // Parse request
     const body = JSON.parse(event.body);
     const userMessage = body.question || body.user;
 
-    console.log('Received message:', userMessage);
+    console.log('User message:', userMessage);
 
     if (!userMessage) {
       return {
@@ -43,23 +41,26 @@ export const handler = async (event, context) => {
     }
 
     // Check API key
-    if (!process.env.OPENROUTER_API_KEY) {
-      console.error('Missing OPENROUTER_API_KEY');
+    const apiKey = process.env.OPENROUTER_API_KEY;
+    if (!apiKey) {
+      console.error('OPENROUTER_API_KEY not set');
       return {
         statusCode: 500,
         headers,
-        body: JSON.stringify({ answer: 'Server configuration error' })
+        body: JSON.stringify({ answer: 'API key not configured' })
       };
     }
 
     console.log('Calling OpenRouter API...');
 
-    // Call OpenRouter API
+    // Call OpenRouter
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
-        'Content-Type': 'application/json'
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+        'HTTP-Referer': 'https://chat.leblesy.com',
+        'X-Title': 'Chatbot'
       },
       body: JSON.stringify({
         model: 'google/gemma-2-9b-it:free',
@@ -67,25 +68,26 @@ export const handler = async (event, context) => {
           { role: 'system', content: 'You are a helpful assistant.' },
           { role: 'user', content: userMessage }
         ]
-      })
+      }),
+      timeout: 9000  // 9 second timeout (before Netlify's 10s limit)
     });
 
-    console.log('OpenRouter response status:', response.status);
+    console.log('OpenRouter status:', response.status);
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('OpenRouter API error:', errorText);
+      console.error('OpenRouter error:', errorText);
       return {
         statusCode: response.status,
         headers,
-        body: JSON.stringify({ answer: `API error: ${errorText}` })
+        body: JSON.stringify({ answer: `API Error: ${response.status}` })
       };
     }
 
     const data = await response.json();
-    const answer = data.choices?.[0]?.message?.content || 'No response';
+    const answer = data.choices?.[0]?.message?.content || 'No response received';
 
-    console.log('Returning answer:', answer);
+    console.log('Success! Answer length:', answer.length);
 
     return {
       statusCode: 200,
@@ -94,11 +96,12 @@ export const handler = async (event, context) => {
     };
 
   } catch (error) {
-    console.error('Function error:', error);
+    console.error('Function error:', error.message);
+    console.error('Stack:', error.stack);
     return {
       statusCode: 500,
       headers,
-      body: JSON.stringify({ answer: `Error: ${error.message}` })
+      body: JSON.stringify({ answer: `Server error: ${error.message}` })
     };
   }
 };
