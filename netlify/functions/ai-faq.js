@@ -1,115 +1,104 @@
-// import fetch from 'node-fetch';
-
-// export async function handler(event, context) {
-//   try {
-//     const body = JSON.parse(event.body);
-//     const userMessage = body.question || body.user; // accept either key
-
-//     if (!userMessage) {
-//       return {
-//         statusCode: 400,
-//         body: JSON.stringify({ answer: "No question provided" }),
-//       };
-//     }
-
-//     const response = await fetch("https://api.openrouter.ai/v1/chat/completions", {
-//       method: "POST",
-//       headers: {
-//         "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
-//         "Content-Type": "application/json"
-//       },
-//       body: JSON.stringify({
-//         model: "google/gemma-2-9b-it:free",
-//         messages: [
-//           { role: "system", content: "You are a helpful assistant." },
-//           { role: "user", content: userMessage }
-//         ]
-//       })
-//     });
-
-//     if (!response.ok) {
-//       const errorText = await response.text();
-//       console.error("OpenRouter API error:", errorText);
-//       return {
-//         statusCode: response.status,
-//         body: JSON.stringify({ answer: "OpenRouter API error: " + errorText }),
-//       };
-//     }
-
-//     const data = await response.json();
-
-//     return {
-//       statusCode: 200,
-//       body: JSON.stringify({
-//         answer: data.choices[0]?.message?.content || "No response"
-//       }),
-//     };
-
-//   } catch (error) {
-//     console.error("Function error:", error);
-//     return {
-//       statusCode: 500,
-//       body: JSON.stringify({ answer: "Server error: " + error.message }),
-//     };
-//   }
-// }
-
 import fetch from 'node-fetch';
 
-export async function handler(event, context) {
-  try {
-    // Parse the incoming request body
-    const body = JSON.parse(event.body);
-    const userMessage = body.question || body.user; // accept either key
+export const handler = async (event, context) => {
+  // Add CORS headers
+  const headers = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Content-Type': 'application/json'
+  };
 
-    // Validate input
+  // Handle preflight OPTIONS request
+  if (event.httpMethod === 'OPTIONS') {
+    return {
+      statusCode: 200,
+      headers,
+      body: ''
+    };
+  }
+
+  // Only accept POST
+  if (event.httpMethod !== 'POST') {
+    return {
+      statusCode: 405,
+      headers,
+      body: JSON.stringify({ answer: 'Method Not Allowed' })
+    };
+  }
+
+  try {
+    // Parse input
+    const body = JSON.parse(event.body);
+    const userMessage = body.question || body.user;
+
+    console.log('Received message:', userMessage);
+
     if (!userMessage) {
       return {
         statusCode: 400,
-        body: JSON.stringify({ answer: "No question provided" })
+        headers,
+        body: JSON.stringify({ answer: 'No question provided' })
       };
     }
 
+    // Check API key
+    if (!process.env.OPENROUTER_API_KEY) {
+      console.error('Missing OPENROUTER_API_KEY');
+      return {
+        statusCode: 500,
+        headers,
+        body: JSON.stringify({ answer: 'Server configuration error' })
+      };
+    }
+
+    console.log('Calling OpenRouter API...');
+
     // Call OpenRouter API
-    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
+    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
       headers: {
-        "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
-        "Content-Type": "application/json"
+        'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: "google/gemma-2-9b-it:free",
+        model: 'google/gemma-2-9b-it:free',
         messages: [
-          { role: "system", content: "You are a helpful assistant." },
-          { role: "user", content: userMessage }
+          { role: 'system', content: 'You are a helpful assistant.' },
+          { role: 'user', content: userMessage }
         ]
       })
     });
 
-    // Check if API response is OK
+    console.log('OpenRouter response status:', response.status);
+
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("OpenRouter API error:", errorText);
+      console.error('OpenRouter API error:', errorText);
       return {
         statusCode: response.status,
-        body: JSON.stringify({ answer: "OpenRouter API error: " + errorText })
+        headers,
+        body: JSON.stringify({ answer: `API error: ${errorText}` })
       };
     }
 
-    // Parse and return the AI response
     const data = await response.json();
+    const answer = data.choices?.[0]?.message?.content || 'No response';
+
+    console.log('Returning answer:', answer);
+
     return {
       statusCode: 200,
-      body: JSON.stringify({
-        answer: data.choices[0]?.message?.content || "No response"
-      })
+      headers,
+      body: JSON.stringify({ answer })
     };
 
   } catch (error) {
-    console.error("Function error:", error);
+    console.error('Function error:', error);
     return {
       statusCode: 500,
-      body: JSON.stringify({ answer: "Server error: " + error.message })
+      headers,
+      body: JSON.stringify({ answer: `Error: ${error.message}` })
     };
   }
-}
+};
