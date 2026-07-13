@@ -43,88 +43,45 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>AI Chatbot</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      max-width: 800px;
-      margin: 50px auto;
-      padding: 20px;
-    }
-    #chat-box {
-      border: 1px solid #ccc;
-      height: 400px;
-      overflow-y: auto;
-      padding: 10px;
-      margin-bottom: 10px;
-      background-color: #f9f9f9;
-    }
-    .controls {
-      display: flex;
-      gap: 10px;
-      margin-bottom: 10px;
-    }
-    #model-select {
-      padding: 10px;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-      font-size: 14px;
-      flex: 1;
-    }
-    .input-group {
-      display: flex;
-      gap: 10px;
-    }
-    #user-input {
-      flex: 1;
-      padding: 10px;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-    }
-    #send-btn {
-      padding: 10px 20px;
-      background-color: #007bff;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-    }
-    #send-btn:hover {
-      background-color: #0056b3;
-    }
-    p {
-      margin: 5px 0;
-    }
-  </style>
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <h1>AI Chatbot</h1>
-  
-  <div class="controls">
-    <label for="model-select">Select Model:</label>
-    <select id="model-select">
-      <option value="google/gemma-2-9b-it:free">Google Gemma 2 9B (Recommended)</option>
-      <option value="meta-llama/llama-3.2-3b-instruct:free">Meta Llama 3.2 3B</option>
-      <option value="meta-llama/llama-3.2-1b-instruct:free">Meta Llama 3.2 1B (Fast)</option>
-      <option value="qwen/qwen-2-7b-instruct:free">Qwen 2 7B</option>
-      <option value="microsoft/phi-3-mini-128k-instruct:free">Microsoft Phi-3 Mini</option>
-      <option value="mistralai/mistral-7b-instruct:free">Mistral 7B</option>
-      <option value="nousresearch/hermes-3-llama-3.1-405b:free">Hermes 3 Llama 405B</option>
-      <option value="meituan/longcat-flash-chat:free">Meituan LongCat Flash</option>
-      <option value="deepseek/deepseek-chat:free">DeepSeek Chat</option>
-      <option value="openchat/openchat-7b:free">OpenChat 7B</option>
-      <option value="gryphe/mythomist-7b:free">MythoMist 7B</option>
-      <option value="alibaba/tongyi-deepresearch-30b-a3b:free">tongyi deep research</option>
-    </select>
-  </div>
+  <div class="app">
+    <header class="app-header">
+      <div>
+        <h1 class="title">AI Chat Assistant</h1>
+        <p class="subtitle">Ask about this website or get quick answers.</p>
+      </div>
+    </header>
 
-  <div id="chat-box"></div>
-  
-  <div class="input-group">
-    <input type="text" id="user-input" placeholder="Type your message...">
-    <button id="send-btn">Send</button>
+    <main class="chat-container">
+      <div class="controls">
+        <label for="model-select" class="model-label">Model</label>
+        <select id="model-select" class="model-select" aria-label="Select model">
+          <option value="google/gemma-2-9b-it:free">Google Gemma 2 9B (Recommended)</option>
+          <option value="meta-llama/llama-3.2-3b-instruct:free">Meta Llama 3.2 3B</option>
+          <option value="meta-llama/llama-3.2-1b-instruct:free">Meta Llama 3.2 1B (Fast)</option>
+          <option value="qwen/qwen-2-7b-instruct:free">Qwen 2 7B</option>
+          <option value="microsoft/phi-3-mini-128k-instruct:free">Microsoft Phi-3 Mini</option>
+          <option value="mistralai/mistral-7b-instruct:free">Mistral 7B</option>
+          <option value="meituan/longcat-flash-chat:free">Meituan LongCat Flash</option>
+        </select>
+      </div>
+
+      <section id="chat-box" class="chat-box" role="log" aria-live="polite"></section>
+
+      <form id="chat-form" class="input-area" action="#" autocomplete="off">
+        <input id="user-input" name="message" class="user-input" type="text" placeholder="Type a message and press Enter" aria-label="Type a message">
+        <button id="send-btn" class="send-btn" type="submit">Send</button>
+      </form>
+    </main>
+
+    <footer class="app-footer">
+      <small>Built for quick demos — responsive and accessible.</small>
+    </footer>
   </div>
 
   <script src="script.js"></script>

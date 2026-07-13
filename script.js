@@ -102,75 +102,113 @@
 //   chatBox.appendChild(p);
 //   chatBox.scrollTop = chatBox.scrollHeight;
 // }
-const sendBtn = document.getElementById("send-btn");
-const userInput = document.getElementById("user-input");
-const chatBox = document.getElementById("chat-box");
-const modelSelect = document.getElementById("model-select");
+const chatForm = document.getElementById('chat-form');
+const userInput = document.getElementById('user-input');
+const chatBox = document.getElementById('chat-box');
+const modelSelect = document.getElementById('model-select');
+const sendBtn = document.getElementById('send-btn');
 
-sendBtn.addEventListener("click", async () => {
-  const message = userInput.value.trim();
-  if (!message) return;
+let idCounter = 0;
 
-  const selectedModel = modelSelect.value;
+function createMessageEl({id, role, text, loading = false}){
+  const wrap = document.createElement('div');
+  wrap.className = `message ${role}${loading? ' loading':''}`;
+  wrap.id = id;
 
-  // Display user message
-  appendMessage("You", message);
-  userInput.value = "";
+  const body = document.createElement('div');
+  body.className = 'body';
+  body.textContent = text;
 
-  // Show loading indicator
-  const loadingId = appendMessage("AI", "Thinking...");
+  const meta = document.createElement('span');
+  meta.className = 'meta';
+  meta.textContent = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
 
-  try {
-    const response = await fetch("/.netlify/functions/ai-faq", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ 
-        user: message,
-        model: selectedModel 
-      })
-    });
+  wrap.appendChild(body);
+  wrap.appendChild(meta);
 
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const data = await response.json();
-    
-    // Remove loading message
-    removeMessage(loadingId);
-    
-    // Display AI response
-    appendMessage("AI", data.answer || "No response");
-
-  } catch (err) {
-    console.error("Fetch error:", err);
-    removeMessage(loadingId);
-    appendMessage("AI", "Error: " + err.message);
+  if (loading) {
+    const spinner = document.createElement('span');
+    spinner.className = 'spinner';
+    body.appendChild(spinner);
   }
-});
 
-// Allow Enter key to send message
-userInput.addEventListener("keypress", (e) => {
-  if (e.key === "Enter") {
-    sendBtn.click();
-  }
-});
+  return wrap;
+}
 
-let messageIdCounter = 0;
-
-function appendMessage(sender, text) {
-  const p = document.createElement("p");
-  const id = `msg-${messageIdCounter++}`;
-  p.id = id;
-  p.textContent = `${sender}: ${text}`;
-  chatBox.appendChild(p);
+function renderMessage(role, text, opts = {}){
+  const id = `msg-${idCounter++}`;
+  const el = createMessageEl({id, role, text, loading: opts.loading});
+  chatBox.appendChild(el);
   chatBox.scrollTop = chatBox.scrollHeight;
   return id;
 }
 
-function removeMessage(id) {
-  const element = document.getElementById(id);
-  if (element) {
-    element.remove();
+function replaceMessage(id, role, text){
+  const old = document.getElementById(id);
+  if (!old) return renderMessage(role, text);
+  const newEl = createMessageEl({id, role, text, loading:false});
+  old.replaceWith(newEl);
+  chatBox.scrollTop = chatBox.scrollHeight;
+  return id;
+}
+
+function removeMessage(id){
+  const el = document.getElementById(id);
+  if (el) el.remove();
+}
+
+async function sendMessage(message){
+  if (!message) return;
+  const selectedModel = modelSelect ? modelSelect.value : undefined;
+
+  // show user's message
+  renderMessage('user', message);
+
+  // clear input and keep focus
+  userInput.value = '';
+  userInput.focus();
+
+  // disable UI while waiting
+  sendBtn.disabled = true;
+
+  // add loading AI placeholder
+  const loadingId = renderMessage('ai', 'Thinking...', {loading:true});
+
+  try{
+    const res = await fetch('/.netlify/functions/ai-faq', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user: message, model: selectedModel })
+    });
+
+    if (!res.ok) throw new Error(`Status ${res.status}`);
+    const data = await res.json();
+
+    const answer = data.answer || data.output || 'No response';
+    replaceMessage(loadingId, 'ai', answer);
+
+  }catch(err){
+    console.error(err);
+    replaceMessage(loadingId, 'ai', 'Error: ' + (err.message || 'Unknown'));
+  }finally{
+    sendBtn.disabled = false;
+    chatBox.scrollTop = chatBox.scrollHeight;
   }
 }
+
+// form submit handles Enter and button
+chatForm.addEventListener('submit', (e) => {
+  e.preventDefault();
+  const text = userInput.value.trim();
+  if (!text) return;
+  sendMessage(text);
+});
+
+// keyboard shortcuts
+userInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') userInput.value = '';
+});
+
+// initial focus
+userInput.focus();
+
