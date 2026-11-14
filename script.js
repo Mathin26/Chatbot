@@ -181,22 +181,8 @@ async function sendMessage(message){
       body: JSON.stringify({ user: message, model: selectedModel })
     });
 
-    const raw = await res.text();
-
-let data;
-try {
-  data = JSON.parse(raw);
-} catch {
-  data = { error: raw };
-}
-
-if (!res.ok) {
-  console.error("Backend response:", data);
-
-  throw new Error(
-    data.error || data.message || `HTTP ${res.status}`
-  );
-}
+    if (!res.ok) throw new Error(`Status ${res.status}`);
+const data = await res.json();
 
 const answer = data.answer || data.output || 'No response';
 replaceMessage(loadingId, 'ai', answer);
